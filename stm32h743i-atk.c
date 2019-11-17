@@ -202,31 +202,7 @@ void ext_mem_setup(void)
 	gpio_set_fmc(gpio_base, 'G', 5);
 	gpio_set_fmc(gpio_base, 'G', 8);
 	gpio_set_fmc(gpio_base, 'G', 15);
-	/* GPIOH  */
-	gpio_set_fmc(gpio_base, 'H', 2);
-	gpio_set_fmc(gpio_base, 'H', 3);
-	gpio_set_fmc(gpio_base, 'H', 5);
-	gpio_set_fmc(gpio_base, 'H', 6);
-	gpio_set_fmc(gpio_base, 'H', 7);
-	gpio_set_fmc(gpio_base, 'H', 8);
-	gpio_set_fmc(gpio_base, 'H', 9);
-	gpio_set_fmc(gpio_base, 'H', 10);
-	gpio_set_fmc(gpio_base, 'H', 11);
-	gpio_set_fmc(gpio_base, 'H', 12);
-	gpio_set_fmc(gpio_base, 'H', 13);
-	gpio_set_fmc(gpio_base, 'H', 14);
-	gpio_set_fmc(gpio_base, 'H', 15);
-	/* GPIOI  */
-	gpio_set_fmc(gpio_base, 'I', 0);
-	gpio_set_fmc(gpio_base, 'I', 1);
-	gpio_set_fmc(gpio_base, 'I', 2);
-	gpio_set_fmc(gpio_base, 'I', 3);
-	gpio_set_fmc(gpio_base, 'I', 4);
-	gpio_set_fmc(gpio_base, 'I', 5);
-	gpio_set_fmc(gpio_base, 'I', 6);
-	gpio_set_fmc(gpio_base, 'I', 7);
-	gpio_set_fmc(gpio_base, 'I', 9);
-	gpio_set_fmc(gpio_base, 'I', 10);
+
 
 	/*  Reset FMC */
 	*RCC_D1AHB1RSTR &= 0xffffefff;
@@ -236,17 +212,14 @@ void ext_mem_setup(void)
 	/*FMC controller Enable*/
 	*FMC_BCR1  |= 0x80000000;
 
-	/* Bank2 config (SDCR2/SDTR2) is the most of time done by bank1 registers
-	 * (SDCR1 /SDTR1) FMC_CLK/2 */
-	*FMC_SDCR1 = 0x000019e5;
-	*FMC_SDCR2 = 0x000019e5;
+	/* Bank1 config FMC_CLK/2 */
+	*FMC_SDCR1 = 0x000019D9;
 
 	*FMC_SDTR1 = 0x0fffffff;
-	*FMC_SDTR2 = 0x0fffffff;
 
 	/* SDRAM initialization sequence */
 	/* Clock enable command */
-	*FMC_SDCMR = 0x00000009;
+	*FMC_SDCMR = 0x00000011;
 
 	tmpreg = *FMC_SDSR & 0x00000020;
 	while((tmpreg != 0) && (timeout-- > 0))
@@ -257,34 +230,40 @@ void ext_mem_setup(void)
 	for (index = 0; index<1000; index++);
 
 	/* PALL command */
-	*FMC_SDCMR = 0x000000a;
+	*FMC_SDCMR = 0x0000012;
+	for (index = 0; index<1000; index++);
 	timeout = 0xFFFF;
 	while((tmpreg != 0) && (timeout-- > 0))
 	{
 		tmpreg = *FMC_SDSR & 0x00000020;
 	}
 
-	*FMC_SDCMR = 0x000000eb;
+    /* Auto-refresh command */
+	*FMC_SDCMR = 0x000000f3;
+	for (index = 0; index<1000; index++);
 	timeout = 0xFFFF;
 	while((tmpreg != 0) && (timeout-- > 0))
 	{
 		tmpreg = *FMC_SDSR & 0x00000020;
 	}
 
-	*FMC_SDCMR = 0x0004400c;
+	*FMC_SDCMR = 0x00004014;
+	for (index = 0; index<1000; index++);
 	timeout = 0xFFFF;
 	while((tmpreg != 0) && (timeout-- > 0))
 	{
 		tmpreg = *FMC_SDSR & 0x00000020;
 	}
+
+    *FMC_SDCMR = 0x00000010;
+
 	/* Set refresh count */
 	tmpreg = *FMC_SDRTR;
-	*FMC_SDRTR = (tmpreg | (0x00000603<<1));
+	*FMC_SDRTR = (tmpreg | (0x00000710<<1));
 
-	tmpreg = *FMC_SDCR2;
-
+    /* Write accesses allowed */
+	tmpreg = *FMC_SDCR1;
 	*FMC_SDCR1 = (tmpreg & 0xFFFFFDFF);
-	*FMC_SDCR2 = (tmpreg & 0xFFFFFDFF);
 }
 
 #define SCB_BASE 0xe000ed00
@@ -346,24 +325,30 @@ static void clean_dcache(void)
 int main(void)
 {
 
-	/* configure clocks */
+	mpu_config(0xc0000000);
 
+	/* configure clocks */
 	clock_setup();
+
+	/* configure external memory controler */
+	ext_mem_setup();
 
 	gpio_set_usart(gpio_base, 'A', 9, 7);
 	gpio_set_usart(gpio_base, 'A', 10, 7);
 
 	usart_setup(usart_base, 125000000);
+
 	usart_putch(usart_base, 'S');
 	usart_putch(usart_base, 't');
 	usart_putch(usart_base, 'a');
 	usart_putch(usart_base, 'r');
 	usart_putch(usart_base, 't');
+	usart_putch(usart_base, '\n');
+	usart_putch(usart_base, '\r');
 
 	clean_dcache();
 	clean_icache();
 
-	while(1);
 	start_kernel();
 
 	return 0;

@@ -19,7 +19,7 @@ obj-y += gpio.o mpu.o qspi.o start_kernel.o
 obj-f4 += $(obj-y) usart-f4.o
 obj-f7 += $(obj-y) usart-f7.o
 
-all: stm32f429i-disco stm32429i-eval stm32f469i-disco stm32746g-eval stm32h743i-eval
+all: stm32f429i-disco stm32429i-eval stm32f469i-disco stm32746g-eval stm32h743i-eval stm32h743i-atk
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) -DKERNEL_ADDR=$(KERNEL_ADDR) -DDTB_ADDR=$(DTB_ADDR) $< -o $@
